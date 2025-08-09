@@ -78,6 +78,7 @@ class EstateProperty(models.Model):
             return True
         else:
             raise UserError("You cannot sell a canceled property")
+            return False
     
     def action_cancel(self):
         if self.state != 'sold':
@@ -85,6 +86,7 @@ class EstateProperty(models.Model):
             return True
         else:
             raise UserError("You cannot cancel a sold property")
+            return False
     
     def action_reset(self):
         self.state = 'new'
