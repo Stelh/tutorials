@@ -92,4 +92,6 @@ class EstateProperty(models.Model):
         self.state = 'new'
         self.selling_price = 0.0
         self.buyer_id = False
+        for record in self.offer_ids:
+            record.status = False
         return True
