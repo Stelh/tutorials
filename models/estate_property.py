@@ -1,6 +1,6 @@
 from odoo import models, fields, api
-from odoo.exceptions import UserError
 from datetime import timedelta
+from odoo.exceptions import UserError, ValidationError
 
 class EstateProperty(models.Model):
     _name = 'estate.property'
@@ -70,6 +70,16 @@ class EstateProperty(models.Model):
         else:
             self.garden_area = 0
             self.garden_orientation = False
+    
+    @api.constrains('expected_price')
+    def _check_expected_price(self):
+        if self.expected_price < 0:
+            raise ValidationError("Expected price must be greater than 0")
+    
+    @api.constrains('selling_price')
+    def _check_selling_price(self):
+        if self.selling_price < 0:
+            raise ValidationError("Selling price must be greater than 0")
     
     # Bouton action
     def action_sold(self):
