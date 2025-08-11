@@ -33,19 +33,21 @@ class EstatePropertyOffer(models.Model):
     
     @api.constrains('price')
     def _check_offer_price(self):
-        if self.price < 0:
-            raise ValidationError("Offer price must be greater than 0")
+        for record in self:
+            if record.price < 0:
+                raise ValidationError("Offer price must be greater than 0")
+        
     
     # Bouton action
     def action_accept(self):
-        if self.property_id.selling_price == 0 and (self.property_id.state != 'sold' and self.property_id.state != 'canceled'):
+        if self.property_id.selling_price == 0 and (self.property_id.state != 'sold' and self.property_id.state != 'canceled' and self.price >= (self.property_id.expected_price * 0.9)):
             self.status = 'accepted'
             self.property_id.selling_price = self.price
             self.property_id.buyer_id = self.partner_id
             self.property_id.state = 'offer_accepted'
             return True
         else:
-            raise UserError("You cannot accept an offer for a sold property")
+            raise ValidationError("Offer price must be greater than 90% of the expected price")
             return False
     
     

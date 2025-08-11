@@ -39,7 +39,8 @@ class EstateProperty(models.Model):
     state = fields.Selection(
         selection=state_selection,
         string="State",
-        help="State of the property"
+        help="State of the property",
+        default='new'
     )
     active = fields.Boolean(default=True)
     
@@ -76,11 +77,6 @@ class EstateProperty(models.Model):
         if self.expected_price < 0:
             raise ValidationError("Expected price must be greater than 0")
     
-    @api.constrains('selling_price')
-    def _check_selling_price(self):
-        if self.selling_price < 0:
-            raise ValidationError("Selling price must be greater than 0")
-    
     # Bouton action
     def action_sold(self):
         if self.state != 'canceled':
@@ -100,8 +96,12 @@ class EstateProperty(models.Model):
     
     def action_reset(self):
         self.state = 'new'
-        self.selling_price = 0.0
+        tmp = self.expected_price
+        self.expected_price = 0
+        self.selling_price = 0
         self.buyer_id = False
-        for record in self.offer_ids:
-            record.status = False
+        self.expected_price = tmp
+        if self.offer_ids:
+            for record in self.offer_ids:
+                record.status = False
         return True
