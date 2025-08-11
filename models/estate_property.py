@@ -1,6 +1,7 @@
 from odoo import models, fields, api
-from datetime import timedelta
+from odoo.tools.float_utils import float_compare
 from odoo.exceptions import UserError, ValidationError
+from datetime import timedelta
 
 class EstateProperty(models.Model):
     _name = 'estate.property'
@@ -74,34 +75,27 @@ class EstateProperty(models.Model):
     
     @api.constrains('expected_price')
     def _check_expected_price(self):
-        if self.expected_price < 0:
+        if float_compare(self.expected_price, 0, precision_digits=2) == -1:
             raise ValidationError("Expected price must be greater than 0")
     
     # Bouton action
     def action_sold(self):
-        if self.state != 'canceled':
-            self.state = 'sold'
-            return True
-        else:
+        if self.state == 'canceled':
             raise UserError("You cannot sell a canceled property")
-            return False
+        self.state = 'sold'
     
     def action_cancel(self):
-        if self.state != 'sold':
-            self.state = 'canceled'
-            return True
-        else:
+        if self.state == 'sold':
             raise UserError("You cannot cancel a sold property")
-            return False
+        self.state = 'canceled'
     
     def action_reset(self):
         self.state = 'new'
         tmp = self.expected_price
         self.expected_price = 0
         self.selling_price = 0
-        self.buyer_id = False
         self.expected_price = tmp
+        self.buyer_id = False
         if self.offer_ids:
             for record in self.offer_ids:
                 record.status = False
-        return True

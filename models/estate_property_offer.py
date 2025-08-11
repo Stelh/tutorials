@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from datetime import timedelta
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.float_utils import float_compare, float_is_zero
 
 class EstatePropertyOffer(models.Model):
     _name = 'estate.property.offer'
@@ -10,9 +11,8 @@ class EstatePropertyOffer(models.Model):
     status = fields.Selection(string="Status",
                                 selection=[
                                     ('accepted', 'Accepted'), 
-                                    ('refused', 'Refused')
-                                ],
-                                copy=False)
+                                    ('refused', 'Refused')],
+                                    copy=False)
     
     partner_id = fields.Many2one('res.partner', string="Partner",required=True,ondelete='cascade')
     property_id = fields.Many2one('estate.property', string="Property",required=True,ondelete='cascade')
@@ -34,35 +34,25 @@ class EstatePropertyOffer(models.Model):
     @api.constrains('price')
     def _check_offer_price(self):
         for record in self:
-            if record.price < 0:
+            if float_compare(record.price, 0, precision_digits=2) == -1:
                 raise ValidationError("Offer price must be greater than 0")
-        
     
     # Bouton action
     def action_accept(self):
-        property_state = self.property_id.state
-        
-        if property_state in ('sold', 'canceled'):
+        if self.property_id.state in ('sold', 'canceled'):
             raise ValidationError("You cannot accept an offer for a sold or canceled property")
-        
-        if self.price < (self.property_id.expected_price * 0.9):
+        if float_compare(self.price, (self.property_id.expected_price * 0.9), precision_digits=2) == -1:
             raise ValidationError("Offer price must be greater than 90% of the expected price")
-        
         self.status = 'accepted'
         self.property_id.selling_price = self.price
         self.property_id.buyer_id = self.partner_id
         self.property_id.state = 'offer_accepted'
     
-    
     def action_refuse(self):
+        if self.property_id.state in ('sold', 'canceled'):
+            raise ValidationError("You cannot refuse an offer for a sold or canceled property")
         self.status = 'refused'
-        if self.property_id.state != 'sold' and self.property_id.state != 'canceled':
-            if self.property_id.buyer_id == self.partner_id and self.property_id.selling_price == self.price:
-                self.property_id.buyer_id = False
-                self.property_id.selling_price = 0
-                self.property_id.state = 'new'
-                return True
-        else:
-            raise UserError("You cannot refuse an offer for a sold property")
-        return False
-        
+        if self.property_id.buyer_id == self.partner_id and float_compare(self.property_id.selling_price, self.price, precision_digits=2) == 0:
+            self.property_id.buyer_id = False
+            self.property_id.selling_price = 0
+            self.property_id.state = 'new'
