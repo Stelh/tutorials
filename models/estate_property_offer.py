@@ -40,21 +40,24 @@ class EstatePropertyOffer(models.Model):
     
     # Bouton action
     def action_accept(self):
-        if self.property_id.selling_price == 0 and (self.property_id.state != 'sold' and self.property_id.state != 'canceled' and self.price >= (self.property_id.expected_price * 0.9)):
-            self.status = 'accepted'
-            self.property_id.selling_price = self.price
-            self.property_id.buyer_id = self.partner_id
-            self.property_id.state = 'offer_accepted'
-            return True
-        else:
+        property_state = self.property_id.state
+        
+        if property_state in ('sold', 'canceled'):
+            raise ValidationError("You cannot accept an offer for a sold or canceled property")
+        
+        if self.price < (self.property_id.expected_price * 0.9):
             raise ValidationError("Offer price must be greater than 90% of the expected price")
-            return False
+        
+        self.status = 'accepted'
+        self.property_id.selling_price = self.price
+        self.property_id.buyer_id = self.partner_id
+        self.property_id.state = 'offer_accepted'
     
     
     def action_refuse(self):
+        self.status = 'refused'
         if self.property_id.state != 'sold' and self.property_id.state != 'canceled':
-            self.status = 'refused'
-            if self.property_id.buyer_id == self.partner_id:
+            if self.property_id.buyer_id == self.partner_id and self.property_id.selling_price == self.price:
                 self.property_id.buyer_id = False
                 self.property_id.selling_price = 0
                 self.property_id.state = 'new'
